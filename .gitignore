@@ -1,0 +1,55 @@
+# ===== Backend: Django / Python =====
+backend/.env
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/*.py[cod]
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+backend/.pytest_cache/
+backend/.mypy_cache/
+
+# Python general
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===== Frontend: React Native / Expo / Node =====
+frontend/anuvartan-mobile/node_modules/
+frontend/anuvartan-mobile/.expo/
+frontend/anuvartan-mobile/.expo-shared/
+frontend/anuvartan-mobile/android/
+frontend/anuvartan-mobile/ios/
+frontend/anuvartan-mobile/android/app/build/
+frontend/anuvartan-mobile/android/build/
+frontend/anuvartan-mobile/ios/build/
+frontend/anuvartan-mobile/dist/
+frontend/anuvartan-mobile/web-build/
+frontend/anuvartan-mobile/.parcel-cache/
+
+# Logs
+frontend/anuvartan-mobile/npm-debug.log*
+frontend/anuvartan-mobile/yarn-debug.log*
+frontend/anuvartan-mobile/yarn-error.log*
+**/*.log
+
+# Global node drops (safety net)
+node_modules/
+.expo/
+
+# ===== Environment files =====
+.env
+*.env
+*.env.local
+*.env.production
+*.env.development
+
+# ===== OS / Editor files =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+env/

@@ -1,0 +1,75 @@
+﻿On branch master
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+	new file:   .gitignore
+	new file:   backend/.env.example
+	new file:   backend/anuvartan/__init__.py
+	new file:   backend/anuvartan/asgi.py
+	new file:   backend/anuvartan/settings.py
+	new file:   backend/anuvartan/urls.py
+	new file:   backend/anuvartan/wsgi.py
+	new file:   backend/hospitals/__init__.py
+	new file:   backend/hospitals/admin.py
+	new file:   backend/hospitals/apps.py
+	new file:   backend/hospitals/migrations/0001_initial.py
+	new file:   backend/hospitals/migrations/__init__.py
+	new file:   backend/hospitals/models.py
+	new file:   backend/hospitals/serializers.py
+	new file:   backend/hospitals/tests.py
+	new file:   backend/hospitals/urls.py
+	new file:   backend/hospitals/views.py
+	new file:   backend/manage.py
+	new file:   backend/reports/__init__.py
+	new file:   backend/reports/admin.py
+	new file:   backend/reports/apps.py
+	new file:   backend/reports/migrations/__init__.py
+	new file:   backend/reports/models.py
+	new file:   backend/reports/tests.py
+	new file:   backend/reports/views.py
+	new file:   backend/requirements.txt
+	new file:   backend/triage/__init__.py
+	new file:   backend/triage/admin.py
+	new file:   backend/triage/apps.py
+	new file:   backend/triage/migrations/0001_initial.py
+	new file:   backend/triage/migrations/0002_chatmessage.py
+	new file:   backend/triage/migrations/0003_alter_case_status.py
+	new file:   backend/triage/migrations/0004_case_assigned_doctor_case_assigned_nurse_and_more.py
+	new file:   backend/triage/migrations/0005_case_diagnosis_case_prescription_alter_case_severity_and_more.py
+	new file:   backend/triage/migrations/0006_case_registration_notes_case_visit_date.py
+	new file:   backend/triage/migrations/__init__.py
+	new file:   backend/triage/models.py
+	new file:   backend/triage/serializers.py
+	new file:   backend/triage/tests.py
+	new file:   backend/triage/urls.py
+	new file:   backend/triage/views.py
+	new file:   backend/users/__init__.py
+	new file:   backend/users/admin.py
+	new file:   backend/users/apps.py
+	new file:   backend/users/migrations/0001_initial.py
+	new file:   backend/users/migrations/0002_alter_user_role.py
+	new file:   backend/users/migrations/0003_user_hospitals.py
+	new file:   backend/users/migrations/__init__.py
+	new file:   backend/users/models.py
+	new file:   backend/users/permissions.py
+	new file:   backend/users/serializers.py
+	new file:   backend/users/tests.py
+	new file:   backend/users/urls.py
+	new file:   backend/users/views.py
+	new file:   frontend/anuvartan-mobile
+	new file:   frontend/package-lock.json
+	new file:   frontend/package.json
+	new file:   package-lock.json
+	new file:   package.json
+	new file:   status.txt
+	new file:   status2.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+	modified:   frontend/anuvartan-mobile (modified content, untracked content)
+	modified:   status2.txt
+
