@@ -176,6 +176,7 @@ export default function Register() {
 const styles = StyleSheet.create({
     container: {
         justifyContent: "center",
+        paddingVertical: 24,
         backgroundColor: colors.background,
     },
     card: {

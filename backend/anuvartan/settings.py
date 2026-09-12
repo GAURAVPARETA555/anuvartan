@@ -13,8 +13,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
-
-
+import dj_database_url
+from dotenv import load_dotenv
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "qwen/qwen3.8-27b")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,12 +26,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-30disv4d(n6vz(=d(m$o72dxn9v9rt%3iglar*8)=m+#1httg@')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't'):
+        SECRET_KEY = 'django-insecure-dev-only-change-me-for-production'
+    else:
+        raise RuntimeError("DJANGO_SECRET_KEY environment variable is required in production (DEBUG=False).")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ["*"]
+# Allowed Hosts configuration
+allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+elif DEBUG:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+else:
+    ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -49,8 +64,9 @@ INSTALLED_APPS = ['hospitals',
 ]
 
 MIDDLEWARE = [
-     'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serves static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -81,12 +97,14 @@ WSGI_APPLICATION = 'anuvartan.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# In production, DATABASE_URL is set by Render (PostgreSQL).
+# Locally, falls back to SQLite so development works without any extra setup.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
 }
 
 
@@ -131,10 +149,51 @@ USE_I18N = True
 USE_TZ = True
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = 'media/'
+# Use an absolute path so media files are always written to the same location
+# regardless of where manage.py / gunicorn is invoked from.
+# NOTE: Render web service disks are ephemeral.  Any uploaded files stored here
+# will be lost on redeploy.  If file/image uploads are added to models in the
+# future, migrate to an external object-storage service (e.g. AWS S3, Cloudinary)
+# before going to production.  This is tracked as a separate production task.
+MEDIA_ROOT = BASE_DIR / 'media'
+OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_MODEL = "phi3"
+OLLAMA_TIMEOUT = 700
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-AUTH_USER_MODEL='users.User'
+AUTH_USER_MODEL = 'users.User'
 STATIC_URL = 'static/'
-CORS_ALLOW_ALL_ORIGINS = True
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise compresses & caches static files; hashed filenames enable
+# far-future cache headers without stale-file risk.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# CORS configuration
+cors_origins_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if cors_origins_env:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# Production Security Settings (Enabled when DEBUG=False)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 't')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+

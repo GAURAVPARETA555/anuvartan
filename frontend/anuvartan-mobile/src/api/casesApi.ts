@@ -35,10 +35,9 @@ export const getCaseMessages = async (caseId: number) => {
     return response.data;
 };
 
-// send message
-export const sendMessage = async (caseId: number, message: string) => {
-    const response = await API.post("/api/triage/send-message/", {
-        case: caseId,
+// send human message
+export const sendMessage = async (caseId: number | string, message: string) => {
+    const response = await API.post(`/api/triage/case/${caseId}/chat/`, {
         message,
     });
     return response.data;
@@ -65,13 +64,15 @@ export const updateCase = async (caseId: number | string, data: any) => {
     const response = await API.patch(`/api/triage/case/${caseId}/update/`, data);
     return response.data;
 };
-export const getCaseDetail = (id: any) => {
-    return API.get(`/api/triage/case/${id}/`);
+export const getCaseDetail = async (id: any) => {
+    const response = await API.get(`/api/triage/case/${id}/`);
+    return response.data;
 };
 
-export const closeCase = async (caseId: number, prescription: string) => {
+export const closeCase = async (caseId: number, prescription: string, diagnosis?: string) => {
     const res = await API.patch(`/api/triage/case/${caseId}/close/`, {
         prescription,
+        ...(diagnosis && { diagnosis }),
     });
     return res.data;
 };

@@ -1,157 +1,240 @@
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { getCaseDetail, getCaseMessages, sendMessage } from "../../src/api/casesApi";
-import { ScreenWrapper } from "../../src/components/ScreenWrapper";
-import { Card } from "../../src/components/Card";
-import { StatusBadge } from "../../src/components/StatusBadge";
-import { Loader } from "../../src/components/Loader";
-import { useAuth } from "../../src/context/AuthContext";
-import { handleApiError } from "../../src/utils/apiErrorHandler";
-import { colors } from "../../src/theme/colors";
+import React, { useState, useCallback } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    ActivityIndicator,
+    ScrollView,
+    TouchableOpacity,
+    Alert,
+    RefreshControl,
+} from "react-native";
+import { Button } from "@/src/components/Button";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { getCaseDetail } from "../../src/api/casesApi";
+import ProcessingModal from "@/src/components/ProcessingModal";
+import AIExplanationModal from "../../src/components/AIExplainationaModal";
+import { explainCase } from "../../src/api/aiapi";
 
 export default function CaseDetail() {
     const { id } = useLocalSearchParams();
     const [caseData, setCaseData] = useState<any>(null);
-    const [messages, setMessages] = useState<any[]>([]);
-    const [messageInput, setMessageInput] = useState("");
     const [loading, setLoading] = useState(true);
-    const [sending, setSending] = useState(false);
-    
-    const { user } = useAuth();
-    const flatListRef = useRef<FlatList>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [processing, setProcessing] = useState(false);
+    const [analysis, setAnalysis] = useState<any>(null);
 
-    useEffect(() => {
-        if (id) {
-            fetchCaseDetailsAndMessages();
-        }
-    }, [id]);
-
-    const fetchCaseDetailsAndMessages = async () => {
+    const fetchCase = async () => {
         try {
-            const [detailRes, msgsRes] = await Promise.all([
-                getCaseDetail(id),
-                getCaseMessages(id as any)
-            ]);
-            setCaseData(detailRes.data);
-            setMessages(msgsRes || []);
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
-        } catch (error) {
-            console.log("Error fetching case details", error);
+            const res = await getCaseDetail(id);
+            const data = res?.data || res;
+            setCaseData(data);
+        } catch (err) {
+            console.log("Fetch case detail error:", err);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
-    const handleSendMessage = async () => {
-        if (!messageInput.trim()) return;
-        setSending(true);
+    useFocusEffect(
+        useCallback(() => {
+            fetchCase();
+        }, [id])
+    );
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchCase();
+    }, [id]);
+
+    const handelExplain = async () => {
         try {
-            await sendMessage(id as any, messageInput);
-            setMessageInput("");
-            const msgsRes = await getCaseMessages(id as any);
-            setMessages(msgsRes || []);
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
-        } catch (error) {
-            handleApiError(error, "Failed to send message");
-        } finally {
-            setSending(false);
+            setProcessing(true);
+            const resource = await explainCase(Number(id));
+            setAnalysis(resource.analysis);  
+            setProcessing(false);
+        } catch (err) {
+            setProcessing(false);
+            Alert.alert("AI Error", "Failed to get AI explanation.");
         }
     };
 
-    if (loading) return <Loader message="Loading Case Details..." />;
-    if (!caseData) return <View style={styles.center}><Text>Error Loading Case Data.</Text></View>;
+    if (loading) {
+        return (
+            <View style={styles.center}>
+                <ActivityIndicator size="large" color="#007bff" />
+            </View>
+        );
+    }
 
-    const isClosed = caseData.status?.toLowerCase() === "closed";
+    if (!caseData) return null;
 
     return (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={{ flex: 1, backgroundColor: colors.background }}>
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={(item, index) => item.id?.toString() || index.toString()}
-                    contentContainerStyle={{ padding: 16 }}
-                    ListHeaderComponent={
-                        <Card style={{ marginBottom: 16 }}>
-                            <View style={styles.headerRow}>
-                                <Text style={styles.title}>{caseData.title}</Text>
-                                <StatusBadge status={caseData.status} />
-                            </View>
-                            <Text style={styles.dateText}>Created On: {new Date(caseData.created_at).toLocaleDateString()}</Text>
+        <>
+            <ScrollView 
+                style={styles.container}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
+                <View style={styles.card}>
+                    <Text style={styles.title}>{caseData.title}</Text>
 
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Description</Text>
-                                <Text style={styles.description}>{caseData.description}</Text>
-                            </View>
+                    <Text style={styles.label}>Description</Text>
+                    <Text style={styles.text}>{caseData.description}</Text>
 
-                            {caseData.diagnosis && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Diagnosis</Text>
-                                    <Text style={styles.description}>{caseData.diagnosis}</Text>
-                                </View>
-                            )}
-
-                            {caseData.prescription && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Prescription</Text>
-                                    <Text style={styles.description}>{caseData.prescription}</Text>
-                                </View>
-                            )}
-                        </Card>
-                    }
-                    renderItem={({ item }) => {
-                        const isMe = item.sender === caseData.patient?.username || item.sender === "patient" && user === caseData.patient?.username; 
-                        // Note: Backend might send sender string value or User object, assuming simple string matching for now based on plans
-                        const bubbleAlign = item.sender === 'patient' || item.sender === user ? 'flex-end' : 'flex-start';
-                        const bubbleBg = item.sender === 'patient' || item.sender === user ? colors.primary : '#E5E5EA';
-                        const textColor = item.sender === 'patient' || item.sender === user ? colors.white : colors.textPrimary;
-
-                        return (
-                            <View style={[styles.bubbleWrapper, { alignSelf: bubbleAlign }]}>
-                                <Text style={{ fontSize: 10, color: colors.textSecondary, marginBottom: 2 }}>{item.sender}</Text>
-                                <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-                                    <Text style={{ color: textColor }}>{item.message}</Text>
-                                </View>
-                            </View>
-                        );
-                    }}
-                />
-
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.chatInput}
-                        placeholder={isClosed ? "Case is closed" : "Type a message..."}
-                        value={messageInput}
-                        onChangeText={setMessageInput}
-                        editable={!isClosed}
-                    />
-                    <TouchableOpacity 
-                        style={[styles.sendBtn, (isClosed || !messageInput.trim()) && { opacity: 0.5 }]} 
-                        onPress={handleSendMessage}
-                        disabled={isClosed || !messageInput.trim() || sending}
-                    >
-                        <Text style={{ color: colors.white, fontWeight: "bold" }}>Send</Text>
-                    </TouchableOpacity>
+                    <View style={styles.row}>
+                        <Text style={styles.tag}>Severity: {caseData.severity}</Text>
+                        <Text style={[styles.tag, caseData.status === "CLOSED" ? styles.closedTag : styles.openTag]}>
+                            Status: {caseData.status}
+                        </Text>
+                    </View>
                 </View>
-            </View>
-        </KeyboardAvoidingView>
+
+                {/* Doctor Diagnosis Section */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Doctor Diagnosis</Text>
+                    <Text style={caseData.diagnosis ? styles.medicalText : styles.placeholderText}>
+                        {caseData.diagnosis || "Diagnosis not provided yet"}
+                    </Text>
+                </View>
+
+                {/* Prescription Section */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Prescription</Text>
+                    <Text style={caseData.prescription ? styles.medicalText : styles.placeholderText}>
+                        {caseData.prescription || "Prescription not provided yet"}
+                    </Text>
+                    {Boolean(caseData.prescription) && (
+                        <Button 
+                            title="Explain Prescription with AI" 
+                            onPress={handelExplain}
+                            style={{ marginTop: 14 }}
+                        />
+                    )}
+                </View>
+
+                {caseData.status !== "CLOSED" ? (
+                    <TouchableOpacity
+                        style={styles.chatButton}
+                        onPress={() => router.push(`/chat/${caseData.id}`)}
+                    >
+                        <Text style={styles.chatText}>Open Chat</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.closedBanner}>
+                        <Text style={styles.closedBannerText}>
+                            Case closed. Chat is disabled.
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
+            <ProcessingModal visible={processing} />
+            <AIExplanationModal visible={analysis !== null} analysis={analysis} onClose={() => setAnalysis(null)} />
+        </>
     );
 }
 
 const styles = StyleSheet.create({
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    title: { fontSize: 20, fontWeight: "bold", color: colors.textPrimary, flex: 1 },
-    dateText: { fontSize: 12, color: colors.textSecondary, marginTop: 6 },
-    section: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: colors.border },
-    sectionTitle: { fontWeight: "bold", fontSize: 16, color: colors.textPrimary, marginBottom: 8 },
-    description: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-    
-    bubbleWrapper: { maxWidth: "80%", marginVertical: 6 },
-    bubble: { padding: 12, borderRadius: 16 },
-    
-    inputContainer: { flexDirection: "row", padding: 12, backgroundColor: colors.white, borderTopWidth: 1, borderColor: colors.border, alignItems: "center" },
-    chatInput: { flex: 1, backgroundColor: "#f4f6f8", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16 },
-    sendBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginLeft: 10 }
+    container: {
+        flex: 1,
+        padding: 16,
+        backgroundColor: "#f4f6f8",
+    },
+    card: {
+        backgroundColor: "#fff",
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 14,
+        elevation: 2,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: "bold",
+        marginBottom: 10,
+        color: "#111",
+    },
+    label: {
+        fontWeight: "bold",
+        marginTop: 6,
+        color: "#333",
+    },
+    text: {
+        marginTop: 4,
+        color: "#555",
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    medicalText: {
+        marginTop: 6,
+        color: "#111",
+        fontSize: 15,
+        lineHeight: 22,
+        fontWeight: "500",
+    },
+    placeholderText: {
+        marginTop: 6,
+        color: "#888",
+        fontSize: 14,
+        fontStyle: "italic",
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#007bff",
+        marginBottom: 4,
+    },
+    row: {
+        flexDirection: "row",
+        gap: 10,
+        marginTop: 12,
+    },
+    tag: {
+        backgroundColor: "#eee",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: "bold",
+    },
+    openTag: {
+        backgroundColor: "#e3f2fd",
+        color: "#1976d2",
+    },
+    closedTag: {
+        backgroundColor: "#ffe5e5",
+        color: "#d9534f",
+    },
+    center: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    chatButton: {
+        backgroundColor: "#2c7be5",
+        padding: 16,
+        borderRadius: 10,
+        marginTop: 10,
+        alignItems: "center",
+    },
+    chatText: {
+        color: "white",
+        fontWeight: "bold",
+        fontSize: 16,
+    },
+    closedBanner: {
+        backgroundColor: "#ffe5e5",
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: "center",
+    },
+    closedBannerText: {
+        color: "#d9534f",
+        fontWeight: "bold",
+    },
 });

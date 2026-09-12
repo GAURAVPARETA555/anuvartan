@@ -17,6 +17,7 @@ export default function Login() {
     const { login } = useAuth();
 
     const handleLogin = async () => {
+        console.log("Button pressed");
         if (!username || !password) {
             handleApiError("Please enter username and password");
             return;
@@ -93,6 +94,7 @@ export default function Login() {
 const styles = StyleSheet.create({
     container: {
         justifyContent: "center",
+        paddingVertical: 24,
         backgroundColor: colors.background,
     },
     card: {

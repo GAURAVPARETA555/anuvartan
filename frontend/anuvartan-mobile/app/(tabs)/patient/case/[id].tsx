@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
     View,
     Text,
@@ -6,34 +6,64 @@ import {
     ActivityIndicator,
     ScrollView,
     TouchableOpacity,
+    Alert,
+    RefreshControl,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { Button } from "@/src/components/Button";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { getCaseDetail } from "../../../../src/api/casesApi";
+import ProcessingModal from "@/src/components/ProcessingModal";
+import AIExplanationModal from "../../../../src/components/AIExplainationaModal";
+import { explainCase } from "../../../../src/api/aiapi";
 
 export default function CaseDetail() {
     const { id } = useLocalSearchParams();
     const [caseData, setCaseData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetchCase();
-    }, []);
+    const [refreshing, setRefreshing] = useState(false);
+    const [processing, setProcessing] = useState(false);
+    const [analysis, setAnalysis] = useState<any>(null);
 
     const fetchCase = async () => {
         try {
             const res = await getCaseDetail(id);
-            setCaseData(res.data);
+            const data = res?.data || res;
+            setCaseData(data);
         } catch (err) {
-            console.log(err);
+            console.log("Fetch patient case detail error:", err);
         } finally {
             setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchCase();
+        }, [id])
+    );
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchCase();
+    }, [id]);
+
+    const handelExplain = async () => {
+        try {
+            setProcessing(true);
+            const resource = await explainCase(Number(id));
+            setAnalysis(resource.analysis);  
+            setProcessing(false);
+        } catch (err) {
+            setProcessing(false);
+            Alert.alert("AI Error", "Failed to get AI explanation.");
         }
     };
 
     if (loading) {
         return (
             <View style={styles.center}>
-                <ActivityIndicator size="large" />
+                <ActivityIndicator size="large" color="#007bff" />
             </View>
         );
     }
@@ -41,67 +71,143 @@ export default function CaseDetail() {
     if (!caseData) return null;
 
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.title}>{caseData.title}</Text>
+        <>
+            <ScrollView 
+                style={styles.container}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
+                <View style={styles.card}>
+                    <Text style={styles.title}>{caseData.title}</Text>
 
-            <Text style={styles.label}>Description</Text>
-            <Text style={styles.text}>{caseData.description}</Text>
+                    <Text style={styles.label}>Description</Text>
+                    <Text style={styles.text}>{caseData.description}</Text>
 
-            <Text style={styles.label}>Severity</Text>
-            <Text style={styles.text}>{caseData.severity}</Text>
+                    <View style={styles.row}>
+                        <Text style={styles.tag}>Severity: {caseData.severity}</Text>
+                        <Text style={[styles.tag, caseData.status === "CLOSED" ? styles.closedTag : styles.openTag]}>
+                            Status: {caseData.status}
+                        </Text>
+                    </View>
+                </View>
 
-            <Text style={styles.label}>Status</Text>
-            <Text style={styles.text}>{caseData.status}</Text>
-
-            <Text style={styles.section}>Doctor Diagnosis</Text>
-            <Text style={styles.text}>
-                {caseData.diagnosis || "Diagnosis not provided yet"}
-            </Text>
-
-            <Text style={styles.section}>Prescription</Text>
-            <Text style={styles.text}>
-                {caseData.prescription || "Prescription not provided yet"}
-            </Text>
-               {caseData.status !== "CLOSED" ? (
-                   <TouchableOpacity
-                       style={styles.chatButton}
-                       onPress={() => router.push(`/chat/${caseData.id}`)}
-                   >
-                       <Text style={styles.chatText}>Open Chat</Text>
-                  </TouchableOpacity>
-                ) : (
-                    <Text style={{ color: "red", marginTop: 10, textAlign: "center", fontWeight: "bold" }}>
-                        Case closed. Chat disabled.
+                {/* Doctor Diagnosis Section */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Doctor Diagnosis</Text>
+                    <Text style={caseData.diagnosis ? styles.medicalText : styles.placeholderText}>
+                        {caseData.diagnosis || "Diagnosis not provided yet"}
                     </Text>
+                </View>
+
+                {/* Prescription Section */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Prescription</Text>
+                    <Text style={caseData.prescription ? styles.medicalText : styles.placeholderText}>
+                        {caseData.prescription || "Prescription not provided yet"}
+                    </Text>
+                    {Boolean(caseData.prescription) && (
+                        <Button 
+                            title="Explain Prescription with AI" 
+                            onPress={handelExplain}
+                            style={{ marginTop: 14 }}
+                        />
+                    )}
+                </View>
+
+                {caseData.status !== "CLOSED" ? (
+                    <TouchableOpacity
+                        style={styles.chatButton}
+                        onPress={() => router.push(`/chat/${caseData.id}`)}
+                    >
+                        <Text style={styles.chatText}>Open Chat</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.closedBanner}>
+                        <Text style={styles.closedBannerText}>
+                            Case closed. Chat is disabled.
+                        </Text>
+                    </View>
                 )}
-                
-        </ScrollView>
+            </ScrollView>
+            <ProcessingModal visible={processing} />
+            <AIExplanationModal visible={analysis !== null} analysis={analysis} onClose={() => setAnalysis(null)} />
+        </>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        padding: 16,
         backgroundColor: "#f4f6f8",
+    },
+    card: {
+        backgroundColor: "#fff",
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 14,
+        elevation: 2,
     },
     title: {
         fontSize: 22,
         fontWeight: "bold",
-        marginBottom: 15,
+        marginBottom: 10,
+        color: "#111",
     },
     label: {
         fontWeight: "bold",
-        marginTop: 10,
+        marginTop: 6,
+        color: "#333",
     },
     text: {
         marginTop: 4,
-        color: "#444",
+        color: "#555",
+        fontSize: 14,
+        lineHeight: 20,
     },
-    section: {
+    medicalText: {
+        marginTop: 6,
+        color: "#111",
+        fontSize: 15,
+        lineHeight: 22,
+        fontWeight: "500",
+    },
+    placeholderText: {
+        marginTop: 6,
+        color: "#888",
+        fontSize: 14,
+        fontStyle: "italic",
+    },
+    sectionTitle: {
         fontSize: 18,
         fontWeight: "bold",
-        marginTop: 20,
+        color: "#007bff",
+        marginBottom: 4,
+    },
+    row: {
+        flexDirection: "row",
+        gap: 10,
+        marginTop: 12,
+    },
+    tag: {
+        backgroundColor: "#eee",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: "bold",
+    },
+    openTag: {
+        backgroundColor: "#e3f2fd",
+        color: "#1976d2",
+    },
+    closedTag: {
+        backgroundColor: "#ffe5e5",
+        color: "#d9534f",
     },
     center: {
         flex: 1,
@@ -110,15 +216,25 @@ const styles = StyleSheet.create({
     },
     chatButton: {
         backgroundColor: "#2c7be5",
-        padding: 14,
+        padding: 16,
         borderRadius: 10,
-        marginTop: 20,
+        marginTop: 10,
         alignItems: "center",
     },
-
     chatText: {
         color: "white",
         fontWeight: "bold",
-    }
-    
+        fontSize: 16,
+    },
+    closedBanner: {
+        backgroundColor: "#ffe5e5",
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: "center",
+    },
+    closedBannerText: {
+        color: "#d9534f",
+        fontWeight: "bold",
+    },
 });

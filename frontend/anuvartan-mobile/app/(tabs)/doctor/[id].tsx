@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import {
@@ -81,7 +82,7 @@ export default function DoctorCaseDetail() {
         }
 
         try {
-            await closeCase(caseId, prescription);
+            await closeCase(caseId, prescription, diagnosis);
             alert("Case Closed Successfully");
             fetchCase();
         } catch (error) {
@@ -100,9 +101,14 @@ export default function DoctorCaseDetail() {
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-            <View style={styles.container}>
+            <ScrollView 
+                style={styles.container}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
 
                 {/* Header */}
                 <Text style={styles.title}>Doctor Case Panel</Text>
@@ -121,6 +127,28 @@ export default function DoctorCaseDetail() {
                         </Text>
                     </View>
                 </View>
+
+                {/* AI Triage Summary */}
+                {caseData.ai_summary && (
+                    <View style={styles.card}>
+                        <Text style={styles.sectionTitle}>AI Triage Summary</Text>
+                        <Text style={styles.label}>Chief Complaint: {caseData.ai_summary.chief_complaint || "N/A"}</Text>
+                        <Text style={styles.label}>Duration: {caseData.ai_summary.duration || "N/A"}</Text>
+                        <Text style={styles.label}>Severity: {caseData.ai_summary.severity_assessment || "N/A"}</Text>
+                        <Text style={styles.label}>
+                            Symptoms: {Array.isArray(caseData.ai_summary.symptoms) ? caseData.ai_summary.symptoms.join(", ") : "None"}
+                        </Text>
+                        <Text style={styles.label}>
+                            Red Flags: {Array.isArray(caseData.ai_summary.red_flags) && caseData.ai_summary.red_flags.length > 0 ? caseData.ai_summary.red_flags.join(", ") : "No red flags identified"}
+                        </Text>
+                        <Text style={styles.label}>Summary: {caseData.ai_summary.summary_text || "N/A"}</Text>
+                        {Array.isArray(caseData.ai_summary.new_updates) && caseData.ai_summary.new_updates.length > 0 && (
+                            <Text style={styles.label}>
+                                Recent Updates: {caseData.ai_summary.new_updates.join("; ")}
+                            </Text>
+                        )}
+                    </View>
+                )}
 
                 {/* Diagnosis Section */}
                 {caseData.status !== "CLOSED" && (
@@ -155,24 +183,36 @@ export default function DoctorCaseDetail() {
                 )}
 
                 {/* Chat Section */}
-                <Text style={styles.chatTitle}>Patient Chat</Text>
+                <Text style={styles.chatTitle}>Shared Case Conversation</Text>
 
                 <FlatList
                     data={messages}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <View
-                            style={[
-                                styles.message,
-                                item.sender === "doctor"
-                                    ? styles.doctorMsg
-                                    : styles.patientMsg,
-                            ]}
-                        >
-                            <Text style={styles.sender}>{item.sender}</Text>
-                            <Text style={styles.msgText}>{item.message}</Text>
-                        </View>
-                    )}
+                    scrollEnabled={false}
+                    keyExtractor={(item) => (item.id || `msg-${Math.random()}`).toString()}
+                    renderItem={({ item }) => {
+                        const role = (item.sender_role || item.sender || "").toLowerCase();
+                        const name = item.sender_name || (role === "doctor" ? "Doctor" : role === "nurse" ? "Nurse" : role === "ai" ? "Anuvartan AI Assistant" : "Patient");
+                        const isDoctor = role === "doctor";
+                        const isAi = role === "ai";
+                        const isNurse = role === "nurse";
+
+                        let bgStyle: any = styles.patientMsg;
+                        if (isDoctor) bgStyle = styles.doctorMsg;
+                        else if (isNurse) bgStyle = { backgroundColor: "#e8f5e9", alignSelf: "flex-start" };
+                        else if (isAi) bgStyle = { backgroundColor: "#f3e5f5", alignSelf: "flex-start" };
+
+                        return (
+                            <View style={[styles.message, bgStyle]}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                                    <Text style={styles.sender}>{name}</Text>
+                                    <Text style={{ fontSize: 9, fontWeight: "bold", color: "#666", textTransform: "uppercase", marginLeft: 6 }}>
+                                        {item.sender_role || role}
+                                    </Text>
+                                </View>
+                                <Text style={styles.msgText}>{item.message}</Text>
+                            </View>
+                        );
+                    }}
                     contentContainerStyle={{ paddingBottom: 80 }}
                 />
 
@@ -207,7 +247,7 @@ export default function DoctorCaseDetail() {
                         <Text>{caseData.prescription}</Text>
                     </View>
                 )}
-            </View>
+            </ScrollView>
         </KeyboardAvoidingView>
     );
 }
@@ -290,13 +330,18 @@ const styles = StyleSheet.create({
         marginVertical: 4,
         maxWidth: "80%",
     },
+    label: {
+        fontWeight: "bold",
+        marginTop: 6,
+        color: "#333",
+    },
     doctorMsg: {
         backgroundColor: "#d1e7dd",
-        alignSelf: "flex-end",
+        alignSelf: "flex-end" as const,
     },
     patientMsg: {
         backgroundColor: "#e2e3e5",
-        alignSelf: "flex-start",
+        alignSelf: "flex-start" as const,
     },
     sender: {
         fontWeight: "bold",
@@ -307,13 +352,11 @@ const styles = StyleSheet.create({
     },
     chatBox: {
         flexDirection: "row",
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
         backgroundColor: "#fff",
         padding: 10,
-        borderTopWidth: 1,
+        borderRadius: 12,
+        marginTop: 10,
+        borderWidth: 1,
         borderColor: "#ddd",
     },
     chatInput: {

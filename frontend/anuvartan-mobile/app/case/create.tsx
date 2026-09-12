@@ -12,13 +12,14 @@ import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
 import { getHospitals } from "../../src/api/hospitalApi";
 import { createCase } from "../../src/api/casesApi";
+import { ScreenWrapper } from "../../src/components/ScreenWrapper";
 
 export default function CreateCase() {
     const [hospitals, setHospitals] = useState<any[]>([]);
     const [selectedHospital, setSelectedHospital] = useState<number | null>(null);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [severity, setSeverity] = useState("medium");
+    const [severity, setSeverity] = useState<"low" | "medium" | "high" | "critical">("medium");
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -74,7 +75,7 @@ export default function CreateCase() {
     };
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper style={styles.container}>
             <Text style={styles.heading}>Create Case</Text>
 
             <Text style={styles.label}>Select Hospital</Text>
@@ -118,7 +119,7 @@ export default function CreateCase() {
                             styles.severityBtn,
                             severity === level && styles.selectedSeverity,
                         ]}
-                        onPress={() => setSeverity(level)}
+                        onPress={() => setSeverity(level as any)}
                     >
                         <Text
                             style={
@@ -144,7 +145,7 @@ export default function CreateCase() {
                     <Text style={styles.buttonText}>Create Case</Text>
                 )}
             </TouchableOpacity>
-        </View>
+        </ScreenWrapper>
     );
 }
 

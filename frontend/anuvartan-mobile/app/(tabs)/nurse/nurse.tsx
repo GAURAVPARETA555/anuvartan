@@ -12,6 +12,7 @@ import { getNurseCases } from "../../../src/api/casesApi";
 import { colors } from "../../../src/theme/colors";
 import { Card } from "../../../src/components/Card";
 import { StatusBadge } from "../../../src/components/StatusBadge";
+import { ScreenWrapper } from "../../../src/components/ScreenWrapper";
 
 export default function NurseScreen() {
     const [cases, setCases] = useState<any[]>([]);
@@ -44,7 +45,7 @@ export default function NurseScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper scrollable={false} style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.heading}>Nurse Dashboard</Text>
             </View>
@@ -57,6 +58,7 @@ export default function NurseScreen() {
                 <FlatList
                     data={cases}
                     keyExtractor={(item) => item.id.toString()}
+                    keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 20 }}
                     renderItem={({ item }) => (
                         <TouchableOpacity onPress={() => router.push(`/nurse/case/${item.id}` as any)}>
@@ -85,7 +87,7 @@ export default function NurseScreen() {
                     )}
                 />
             )}
-        </View>
+        </ScreenWrapper>
     );
 }
 

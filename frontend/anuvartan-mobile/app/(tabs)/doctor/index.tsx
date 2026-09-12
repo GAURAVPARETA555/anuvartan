@@ -12,6 +12,7 @@ import { getDoctorCases } from "../../../src/api/casesApi";
 import { colors } from "../../../src/theme/colors";
 import { Card } from "../../../src/components/Card";
 import { StatusBadge } from "../../../src/components/StatusBadge";
+import { ScreenWrapper } from "../../../src/components/ScreenWrapper";
 
 export default function DoctorDashboard() {
 
@@ -48,7 +49,7 @@ export default function DoctorDashboard() {
     }
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper scrollable={false} style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.heading}>Doctor Dashboard</Text>
             </View>
@@ -61,6 +62,7 @@ export default function DoctorDashboard() {
                 <FlatList
                     data={cases}
                     keyExtractor={(item) => item.id.toString()}
+                    keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 20 }}
                     renderItem={({ item }) => (
                         <TouchableOpacity onPress={() => router.push(`/doctor/${item.id}` as any)}>
@@ -89,7 +91,7 @@ export default function DoctorDashboard() {
                     )}
                 />
             )}
-        </View>
+        </ScreenWrapper>
     );
 }
 

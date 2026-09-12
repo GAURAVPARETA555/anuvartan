@@ -13,6 +13,7 @@ import { colors } from "../../../src/theme/colors";
 import { Card } from "../../../src/components/Card";
 import { StatusBadge } from "../../../src/components/StatusBadge";
 import { Button } from "../../../src/components/Button";
+import { ScreenWrapper } from "../../../src/components/ScreenWrapper";
 
 export default function PatientScreen() {
     const [cases, setCases] = useState<any[]>([]);
@@ -44,7 +45,7 @@ export default function PatientScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper scrollable={false} style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.heading}>My Medical Cases</Text>
             </View>
@@ -63,6 +64,7 @@ export default function PatientScreen() {
                 <FlatList
                     data={cases}
                     keyExtractor={(item) => item.id.toString()}
+                    keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 20 }}
                     renderItem={({ item }) => (
                         <TouchableOpacity onPress={() => router.push(`/case/${item.id}`)}>
@@ -84,7 +86,7 @@ export default function PatientScreen() {
                     )}
                 />
             )}
-        </View>
+        </ScreenWrapper>
     );
 }
 
