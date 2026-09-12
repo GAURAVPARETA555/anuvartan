@@ -1,8 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 const API = axios.create({
-    baseURL: process.env.EXPO_PUBLIC_API_URL || "http://192.168.29.11:8000",
-    timeout: 700000,
+    baseURL: process.env.EXPO_PUBLIC_API_URL || " https://anuvartan-backend.onrender.com",
+    timeout: 70000,
 });
  
 // ✅ REQUEST INTERCEPTOR

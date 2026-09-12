@@ -186,6 +186,7 @@ if cors_origins_env:
 else:
     CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Production Security Settings (Enabled when DEBUG=False)
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 't')
