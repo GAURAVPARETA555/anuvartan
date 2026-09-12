@@ -37,13 +37,11 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't')
 
 # Allowed Hosts configuration
-allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
-if allowed_hosts_env:
-    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
-elif DEBUG:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
-else:
-    ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "anuvartan-backend.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
